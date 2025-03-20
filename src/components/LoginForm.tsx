@@ -27,6 +27,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Mock user database for demonstration
+const mockUsers = [
+  { username: "demo", password: "demo123" },
+  { username: "admin", password: "admin123" },
+  // We'll check against real username in console logs
+  { username: "GABRIEL_SANTOS", password: "Gabi25" }
+];
+
 const LoginForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -52,14 +60,18 @@ const LoginForm: React.FC = () => {
       console.log("Login data:", data);
       setIsSubmitting(false);
       
-      // For demo purposes - show error for specific username/password
-      if (data.username === "demo" && data.password === "wrong") {
-        setLoginError("Senha incorreta. Por favor, tente novamente.");
+      // Find user in our mock database
+      const user = mockUsers.find(user => user.username === data.username);
+      
+      // User not found
+      if (!user) {
+        setLoginError("Usuário não encontrado. Verifique o nome de usuário ou registre-se.");
         return;
       }
       
-      if (data.username === "unknown") {
-        setLoginError("Usuário não encontrado. Verifique o nome de usuário ou registre-se.");
+      // Password doesn't match
+      if (user.password !== data.password) {
+        setLoginError("Senha incorreta. Por favor, tente novamente.");
         return;
       }
       
