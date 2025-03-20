@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { format } from "date-fns";
+import { format, parse, isValid } from "date-fns";
 import { CalendarIcon, CheckCircle, ChevronRight, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,6 +36,7 @@ const formSchema = z.object({
   birthDate: z.date({
     required_error: "Data de nascimento é obrigatória",
   }),
+  birthDateInput: z.string().optional(),
   email: z.string().email({ message: "Email inválido" }),
   position: z.string().min(2, { message: "Cargo é obrigatório" }),
   username: z
@@ -72,6 +72,7 @@ const RegistrationForm: React.FC = () => {
       username: "",
       password: "",
       confirmPassword: "",
+      birthDateInput: "",
     },
   });
 
@@ -104,6 +105,24 @@ const RegistrationForm: React.FC = () => {
     const value = e.target.value.replace(/\D/g, '');
     if (value.length <= 11) {
       form.setValue('cpf', value);
+    }
+  };
+
+  // Handle manual birthdate input
+  const handleBirthDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: (date: Date | undefined) => void) => {
+    const inputValue = e.target.value;
+    form.setValue('birthDateInput', inputValue);
+    
+    // Try to parse the date
+    if (inputValue) {
+      try {
+        const parsedDate = parse(inputValue, 'dd/MM/yyyy', new Date());
+        if (isValid(parsedDate)) {
+          onChange(parsedDate);
+        }
+      } catch (error) {
+        // Invalid date format, just update the input field
+      }
     }
   };
 
@@ -171,44 +190,57 @@ const RegistrationForm: React.FC = () => {
             )}
           />
 
+          {/* Modified birthDate field to allow manual input */}
           <FormField
             control={form.control}
             name="birthDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Data de Nascimento</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
+                <div className="flex gap-2">
+                  <div className="flex-1">
                     <FormControl>
+                      <Input
+                        placeholder="DD/MM/AAAA"
+                        value={form.watch('birthDateInput') || (field.value ? format(field.value, 'dd/MM/yyyy') : '')}
+                        onChange={(e) => handleBirthDateInputChange(e, field.onChange)}
+                        className="input-focus-effect"
+                      />
+                    </FormControl>
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
                       <Button
                         variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal input-focus-effect",
-                          !field.value && "text-muted-foreground"
-                        )}
+                        size="icon"
+                        className="px-3"
+                        type="button"
                       >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Selecione uma data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        <CalendarIcon className="h-4 w-4" />
                       </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                      }
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          if (date) {
+                            form.setValue('birthDateInput', format(date, 'dd/MM/yyyy'));
+                          }
+                        }}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <FormDescription>
+                  Digite a data no formato DD/MM/AAAA ou selecione no calendário
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
