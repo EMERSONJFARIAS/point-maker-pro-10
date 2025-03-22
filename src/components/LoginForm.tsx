@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -35,11 +35,35 @@ const mockUsers = [
   { username: "GABRIEL_SANTOS", password: "Gabi25" }
 ];
 
+// Define a type for registered users
+type RegisteredUser = {
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+  // Add other fields as needed
+};
+
 const LoginForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Load registered users from localStorage on component mount
+  useEffect(() => {
+    const savedUsers = localStorage.getItem('registeredUsers');
+    if (savedUsers) {
+      try {
+        const parsedUsers = JSON.parse(savedUsers);
+        setRegisteredUsers(parsedUsers);
+        console.log("Loaded registered users:", parsedUsers);
+      } catch (error) {
+        console.error("Error parsing registered users:", error);
+      }
+    }
+  }, []);
 
   // Set up the form
   const form = useForm<FormValues>({
@@ -58,24 +82,48 @@ const LoginForm: React.FC = () => {
     // Simulate API call
     setTimeout(() => {
       console.log("Login data:", data);
+      console.log("Registered users:", registeredUsers);
       setIsSubmitting(false);
       
-      // Find user in our mock database
-      const user = mockUsers.find(user => user.username === data.username);
+      // First check in registered users from localStorage
+      const registeredUser = registeredUsers.find(user => user.username === data.username);
       
-      // User not found
-      if (!user) {
+      if (registeredUser) {
+        // User found in registered users
+        if (registeredUser.password === data.password) {
+          // Success case for registered user
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Bem-vindo ao sistema Point Maker.",
+            variant: "default",
+          });
+          
+          // Navigate to dashboard after successful login
+          navigate("/dashboard");
+          return;
+        } else {
+          // Password doesn't match for registered user
+          setLoginError("Senha incorreta. Por favor, tente novamente.");
+          return;
+        }
+      }
+      
+      // If not found in registered users, check in mock users
+      const mockUser = mockUsers.find(user => user.username === data.username);
+      
+      // User not found in both registered and mock users
+      if (!mockUser) {
         setLoginError("Usuário não encontrado. Verifique o nome de usuário ou registre-se.");
         return;
       }
       
-      // Password doesn't match
-      if (user.password !== data.password) {
+      // Password doesn't match for mock user
+      if (mockUser.password !== data.password) {
         setLoginError("Senha incorreta. Por favor, tente novamente.");
         return;
       }
       
-      // Success case
+      // Success case for mock user
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao sistema Point Maker.",

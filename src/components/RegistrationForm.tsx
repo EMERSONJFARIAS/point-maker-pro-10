@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -60,6 +61,7 @@ const RegistrationForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Set up the form
   const form = useForm<FormValues>({
@@ -76,6 +78,55 @@ const RegistrationForm: React.FC = () => {
     },
   });
 
+  // Save user to localStorage
+  const saveUserToLocalStorage = (data: FormValues) => {
+    try {
+      // Get existing users from localStorage
+      const existingUsersJSON = localStorage.getItem('registeredUsers');
+      const existingUsers = existingUsersJSON ? JSON.parse(existingUsersJSON) : [];
+      
+      // Check if username already exists
+      const userExists = existingUsers.some((user: any) => user.username === data.username);
+      
+      if (userExists) {
+        toast({
+          title: "Erro ao cadastrar",
+          description: "Este nome de usuário já está em uso. Por favor, escolha outro.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Add new user
+      const newUser = {
+        username: data.username,
+        password: data.password,
+        name: data.name,
+        cpf: data.cpf,
+        birthDate: data.birthDate,
+        email: data.email,
+        position: data.position
+      };
+      
+      existingUsers.push(newUser);
+      
+      // Save back to localStorage
+      localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
+      console.log('User saved to localStorage:', newUser);
+      console.log('All registered users:', existingUsers);
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving user to localStorage:', error);
+      toast({
+        title: "Erro ao cadastrar",
+        description: "Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   // Handle form submission
   const onSubmit = (data: FormValues) => {
     setIsSubmitting(true);
@@ -84,6 +135,14 @@ const RegistrationForm: React.FC = () => {
     setTimeout(() => {
       console.log("Form data:", data);
       setIsSubmitting(false);
+      
+      // Save user to localStorage
+      const saveSuccess = saveUserToLocalStorage(data);
+      
+      if (!saveSuccess) {
+        return;
+      }
+      
       setSubmitSuccess(true);
       
       toast({
